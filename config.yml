@@ -1,0 +1,10 @@
+database_address: localhost
+database_port: 3306
+database_name: mc_statistician
+database_username: vaisagh
+database_password: vaisaghviswanathan
+database_update_time: 120
+timer_update_time: 15
+game_start_time: 5
+game_end_time: 30
+number_of_prisons: 11
