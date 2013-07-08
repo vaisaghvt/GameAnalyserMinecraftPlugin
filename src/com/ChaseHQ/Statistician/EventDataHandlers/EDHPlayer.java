@@ -113,7 +113,7 @@ public class EDHPlayer {
 							.getInstance()
 							.getPlayerData()
 							.addPlayerToWatch(player.getUniqueId().toString(),
-									player.getLocation());
+									player.getLocation(), player.getDisplayName());
 					Timer timerForPlayer = new Timer(true);
 
 					timerForPlayer.scheduleAtFixedRate(new PlayerMessageTimer(

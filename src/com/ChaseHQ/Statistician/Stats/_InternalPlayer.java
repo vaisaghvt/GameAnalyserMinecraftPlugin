@@ -54,11 +54,13 @@ public class _InternalPlayer {
 	private long completionTime;
 	private long escapeStartTime;
 	private Position lastPrisonLocation = null;
+	private final String displayName;
 
-	public _InternalPlayer(String UUID, Location location) {
+	public _InternalPlayer(String UUID, Location location, String displayName) {
 		this.UUID = UUID;
 		this.LastLocation = location;
 		previousPosition =location;
+		this.displayName = displayName;
 
 	}
 
@@ -204,7 +206,8 @@ public class _InternalPlayer {
 
 	}
 
-
-
+	public String getDisplayName() {
+		return this.displayName;
+	}
 
 }

@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Server;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Boat;
 import org.bukkit.entity.Entity;
@@ -14,6 +15,7 @@ import org.bukkit.entity.Minecart;
 import org.bukkit.entity.Pig;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.Action;
+import org.bukkit.Bukkit; 
 
 import com.ChaseHQ.Statistician.Config.Config;
 import com.ChaseHQ.Statistician.Database.DBSynchDataGetSet;
@@ -25,13 +27,12 @@ import com.ChaseHQ.Statistician.Utils.StringHandler;
 public class PlayerData implements IProcessable {
 	private HashMap<String, _InternalPlayer> _watchedPlayers = new HashMap<String, _InternalPlayer>();
 	private final String SECOND_TASK_LOCATION = "library";
-	private long lastTimeStep = 0;
 
-	public synchronized void addPlayerToWatch(String UUID, Location loc) {
+	public synchronized void addPlayerToWatch(String UUID, Location loc, String displayName) {
 		// See if one still lives
 		_InternalPlayer ip = this._watchedPlayers.get(UUID);
 		if (ip == null) {
-			this._watchedPlayers.put(UUID, new _InternalPlayer(UUID, loc));
+			this._watchedPlayers.put(UUID, new _InternalPlayer(UUID, loc, displayName));
 		} else {
 			ip.RenewMe = true;
 			ip.RenewMeTime = System.currentTimeMillis() / 1000;
@@ -43,19 +44,33 @@ public class PlayerData implements IProcessable {
 		Long logoutTime = System.currentTimeMillis() / 1000;
 		if (ip != null) {
 			if (ip.RenewMe) {
-				ip.TimeAlteration += logoutTime.intValue() - ip.LastUpdateTime.intValue() - (logoutTime.intValue() - ip.RenewMeTime.intValue());
+				ip.TimeAlteration += logoutTime.intValue()
+						- ip.LastUpdateTime.intValue()
+						- (logoutTime.intValue() - ip.RenewMeTime.intValue());
 				ip.RenewMe = false;
 				ip.LastUpdateTime = logoutTime;
 			}
 			ip.DestroyAndCleanup = true;
 			ip.LogOutTime = logoutTime;
 		}
+		
+//		System.out.println(this._watchedPlayers.size());
+//		if (this._watchedPlayers.isEmpty()){
+//			System.out.println("Trying to kill the server");
+		//Since only one player is connected at any given point of time, as soon as that one player disconnects stop the server.	
+		Server server = Bukkit.getServer();
+		
+		server.dispatchCommand(server.getConsoleSender(), "kick "+ip.getDisplayName()+" \"Thank you for playing!\"");
+		
+		server.dispatchCommand(server.getConsoleSender(), "stop");
+//		}
 	}
 
 	public synchronized void addBlockBreak(String UUID, Integer blockID) {
 		_InternalPlayer ip = this._watchedPlayers.get(UUID);
-		if (ip == null) //Log.ConsoleLog("Tried to set data values on player that was not added to watch '" + UUID + "'");
-		return;
+		if (ip == null) // Log.ConsoleLog("Tried to set data values on player that was not added to watch '"
+						// + UUID + "'");
+			return;
 		Integer pbb = ip.BlockDestroyed.get(blockID);
 		if (pbb == null) {
 			pbb = new Integer(0);
@@ -66,13 +81,16 @@ public class PlayerData implements IProcessable {
 		ip.BlockDestroyed.put(blockID, pbb);
 	}
 
-	//public void incrementStepsTaken(String UUID, Location loc, boolean inMinecart, boolean onPig, boolean inBoat) {
-	public void incrementStepsTaken(String UUID, Location loc, Class<? extends Entity> vehicleType) {
+	// public void incrementStepsTaken(String UUID, Location loc, boolean
+	// inMinecart, boolean onPig, boolean inBoat) {
+	public void incrementStepsTaken(String UUID, Location loc,
+			Class<? extends Entity> vehicleType) {
 		_InternalPlayer ip = this._watchedPlayers.get(UUID);
-		if (ip == null) //Log.ConsoleLog("Tried to set data values on player that was not added to watch '" + UUID + "'");
-		return;
+		if (ip == null) // Log.ConsoleLog("Tried to set data values on player that was not added to watch '"
+						// + UUID + "'");
+			return;
 		try {
-			int newDist = (int)ip.LastLocation.distance(loc);
+			int newDist = (int) ip.LastLocation.distance(loc);
 
 			if (newDist > 0) {
 				ip.Distance += newDist;
@@ -94,90 +112,116 @@ public class PlayerData implements IProcessable {
 		}
 	}
 
-
 	public boolean isGameComplete(String UUID) {
 		_InternalPlayer ip = this._watchedPlayers.get(UUID);
-		if (ip == null) //Log.ConsoleLog("Tried to set data values on player that was not added to watch '" + UUID + "'");
+		if (ip == null) // Log.ConsoleLog("Tried to set data values on player that was not added to watch '"
+						// + UUID + "'");
 			return false;
 		else
 			return ip.isGameComplete();
 
-
 	}
-
 
 	public void updateInteractEvent(Player player, String UUID, Action action,
 			Block clickedBlock) {
 
-
-		if (clickedBlock.getType() != Material.LEVER || (action != Action.RIGHT_CLICK_BLOCK && action != Action.LEFT_CLICK_BLOCK)){
+		if (clickedBlock.getType() != Material.LEVER
+				|| (action != Action.RIGHT_CLICK_BLOCK && action != Action.LEFT_CLICK_BLOCK)) {
 			return;
 		}
 
-
-
 		_InternalPlayer ip = this._watchedPlayers.get(UUID);
-		if (ip == null) //Log.ConsoleLog("Tried to set data values on player that was not added to watch '" + UUID + "'");
+		if (ip == null) // Log.ConsoleLog("Tried to set data values on player that was not added to watch '"
+						// + UUID + "'");
 			return;
 
 		Location leverLocation = clickedBlock.getLocation();
 
+		if ((clickedBlock.getData() & 0x8) == 8) { // powered
 
-		if((clickedBlock.getData()&0x8) == 8){ // powered
+			ip.addOpenPrisonLocation(leverLocation,
+					(long) ((new Date()).getTime() % 1e12));
 
-			ip.addOpenPrisonLocation(leverLocation,(long) ((new Date()).getTime()%1e12));
-
-			if(ip.getnumberOfPrisonsOpened() == Config.getConfig().getNumberOfPrisons()){ //escape step 1 : go to top floor
-				player.sendMessage(StringHandler.formatForChat("Good work so far! You need to escape asap now. Go to the gallery with all the pictures on Level 3. The Wall behind the desk holds the key.", player));
+			if (ip.getnumberOfPrisonsOpened() == Config.getConfig()
+					.getNumberOfPrisons()) { // escape step 1 : go to top floor
+				player.sendMessage(StringHandler
+						.formatForChat(
+								"Good work so far! You need to escape asap now. Go to the gallery with all the pictures on Level 3. The Wall behind the desk holds the key.",
+								player));
 				PlayerMessageTimer.currentAim = "Picture Gallery (3rd floor)";
-			}else if(ip.getnumberOfPrisonsOpened() == Config.getConfig().getNumberOfPrisons()+1){ // escape step 2 : knowledge testing path planning
-				player.sendMessage(StringHandler.formatForChat("Nice! One more step to freedom. Second floor-"+SECOND_TASK_LOCATION +". Another secret wall.", player));
-				ip.setEscapeStartTime((long) ((new Date()).getTime()%1e12));			
-				PlayerMessageTimer.currentAim = SECOND_TASK_LOCATION+" (2nd floor)";
-			}else if(ip.getnumberOfPrisonsOpened() == Config.getConfig().getNumberOfPrisons()+2){ // escape step 3 : get to escape. Again knowledge testing and finale. 
-				player.sendMessage(StringHandler.formatForChat("Awesome work soldier! Proceeed to your starting location on the ground floor.", player));
+			} else if (ip.getnumberOfPrisonsOpened() == Config.getConfig()
+					.getNumberOfPrisons() + 1) { // escape step 2 : knowledge
+													// testing path planning
+				player.sendMessage(StringHandler.formatForChat(
+						"Nice! One more step to freedom. Second floor-"
+								+ SECOND_TASK_LOCATION
+								+ ". Another secret wall.", player));
+				ip.setEscapeStartTime((long) ((new Date()).getTime() % 1e12));
+				PlayerMessageTimer.currentAim = SECOND_TASK_LOCATION
+						+ " (2nd floor)";
+			} else if (ip.getnumberOfPrisonsOpened() == Config.getConfig()
+					.getNumberOfPrisons() + 2) { // escape step 3 : get to
+													// escape. Again knowledge
+													// testing and finale.
+				player.sendMessage(StringHandler
+						.formatForChat(
+								"Awesome work soldier! Proceeed to your starting location on the ground floor.",
+								player));
 				PlayerMessageTimer.currentAim = "Starting Location (1st Floor)";
-			}else if (ip.getnumberOfPrisonsOpened() < Config.getConfig().getNumberOfPrisons()) {
-				if(ip.getnumberOfPrisonsOpened()>0){
-					player.sendMessage(StringHandler.formatForChat(ip.getnumberOfPrisonsOpened()+ " of "+ Config.getConfig().getNumberOfPrisons()+" prisons opened", player));
+			} else if (ip.getnumberOfPrisonsOpened() < Config.getConfig()
+					.getNumberOfPrisons()) {
+				if (ip.getnumberOfPrisonsOpened() > 0) {
+					player.sendMessage(StringHandler.formatForChat(
+							ip.getnumberOfPrisonsOpened() + " of "
+									+ Config.getConfig().getNumberOfPrisons()
+									+ " prisons opened", player));
 				}
-			}else {
-				long timeAtComplete = (long) ((new Date()).getTime()%1e12);
+			} else {
+				long timeAtComplete = (long) ((new Date()).getTime() % 1e12);
 				long timeToComplete = ip.setCompletionTime(timeAtComplete);
-				player.sendMessage(StringHandler.formatForChat("Congratulations! You completed the task in "+ timeToComplete +" seconds. Thank you for playing!", player));
+				player.sendMessage(StringHandler.formatForChat(
+						"Congratulations! You completed the task in "
+								+ timeToComplete
+								+ " seconds. Thank you for playing!", player));
 				ip.setGameCompleted();
 			}
-		}else {
+		} else {
 			ip.removeOpenPrisonLocation(leverLocation);
-			player.sendMessage(StringHandler.formatForChat("Warning! You just closed a lever. All levers need to open to complete the game and escape.", player));
+			player.sendMessage(StringHandler
+					.formatForChat(
+							"Warning! You just closed a lever. All levers need to open to complete the game and escape.",
+							player));
 		}
 
 	}
 
 	public void updatePlayerLocation(String UUID, Location location, long time) {
-		time%=1e12; // Not necessary to store so big a value and requires reconfiguring of mysql database.
+		time %= 1e12; // Not necessary to store so big a value and requires
+						// reconfiguring of mysql database.
 		_InternalPlayer player = this._watchedPlayers.get(UUID);
 
-		if (player == null) //Log.ConsoleLog("Tried to set data values on player that was not added to watch '" + UUID + "'");
+		if (player == null) // Log.ConsoleLog("Tried to set data values on player that was not added to watch '"
+							// + UUID + "'");
 			return;
 		try {
 			// Minimize unnecessary updating.
-			if(player.timeSteps.contains(time)){ 
+			if (player.timeSteps.contains(time)) {
 				return;
 			}
 
-			int x=location.getBlockX();
-			int y=location.getBlockY();
-			int z=location.getBlockZ();
+			int x = location.getBlockX();
+			int y = location.getBlockY();
+			int z = location.getBlockZ();
 
 			// Minimize unnecsesary updating: Don't update if same location
-			if(player.previousPosition!=null && player.previousPosition.getBlockX()==x &&
-					player.previousPosition.getBlockY()==y &&
-					player.previousPosition.getBlockZ()==z ){
+			if (player.previousPosition != null
+					&& player.previousPosition.getBlockX() == x
+					&& player.previousPosition.getBlockY() == y
+					&& player.previousPosition.getBlockZ() == z) {
 
 				return;
 			}
-			synchronized(player.timeSteps){
+			synchronized (player.timeSteps) {
 				player.timeSteps.add(time);
 			}
 			player.timeXMapping.put(time, x);
@@ -185,7 +229,7 @@ public class PlayerData implements IProcessable {
 			player.timeZMapping.put(time, z);
 			player.previousPosition = location;
 		} catch (IllegalArgumentException e) {
-//			player.LastLocation = location;
+			// player.LastLocation = location;
 		}
 
 	}
@@ -194,7 +238,8 @@ public class PlayerData implements IProcessable {
 
 		_InternalPlayer player = this._watchedPlayers.get(string);
 
-		if (player == null) //Log.ConsoleLog("Tried to set data values on player that was not added to watch '" + UUID + "'");
+		if (player == null) // Log.ConsoleLog("Tried to set data values on player that was not added to watch '"
+							// + UUID + "'");
 			return -1;
 		return player.getnumberOfPrisonsOpened();
 	}
@@ -202,14 +247,17 @@ public class PlayerData implements IProcessable {
 	public String getLastPrisonLevel(String string) {
 		_InternalPlayer player = this._watchedPlayers.get(string);
 
-		if (player == null) //Log.ConsoleLog("Tried to set data values on player that was not added to watch '" + UUID + "'");
+		if (player == null) // Log.ConsoleLog("Tried to set data values on player that was not added to watch '"
+							// + UUID + "'");
 			return null;
 		return player.getLastPrisonLevel();
 	}
+
 	public synchronized void addBlockPlaced(String UUID, Integer blockID) {
 		_InternalPlayer ip = this._watchedPlayers.get(UUID);
-		if (ip == null) //Log.ConsoleLog("Tried to set data values on player that was not added to watch '" + UUID + "'");
-		return;
+		if (ip == null) // Log.ConsoleLog("Tried to set data values on player that was not added to watch '"
+						// + UUID + "'");
+			return;
 		Integer pbb = ip.BlockPlaced.get(blockID);
 		if (pbb == null) {
 			pbb = new Integer(0);
@@ -222,15 +270,18 @@ public class PlayerData implements IProcessable {
 
 	public synchronized void addKillTag(String UUID, KillTag kt) {
 		_InternalPlayer ip = this._watchedPlayers.get(UUID);
-		if (ip == null) //Log.ConsoleLog("Tried to set data values on player that was not added to watch '" + UUID + "'");
-		return;
+		if (ip == null) // Log.ConsoleLog("Tried to set data values on player that was not added to watch '"
+						// + UUID + "'");
+			return;
 		ip.KillTags.add(kt);
 	}
 
-	public synchronized void addItemPickup(String UUID, Integer itemID, Integer amount) {
+	public synchronized void addItemPickup(String UUID, Integer itemID,
+			Integer amount) {
 		_InternalPlayer ip = this._watchedPlayers.get(UUID);
-		if (ip == null) //Log.ConsoleLog("Tried to set data values on player that was not added to watch '" + UUID + "'");
-		return;
+		if (ip == null) // Log.ConsoleLog("Tried to set data values on player that was not added to watch '"
+						// + UUID + "'");
+			return;
 		Integer itemStore = ip.ItemPickup.get(itemID);
 		if (itemStore == null) {
 			itemStore = new Integer(0);
@@ -239,10 +290,12 @@ public class PlayerData implements IProcessable {
 		ip.ItemPickup.put(itemID, itemStore);
 	}
 
-	public synchronized void addItemDropped(String UUID, Integer itemID, Integer amount) {
+	public synchronized void addItemDropped(String UUID, Integer itemID,
+			Integer amount) {
 		_InternalPlayer ip = this._watchedPlayers.get(UUID);
-		if (ip == null) //Log.ConsoleLog("Tried to set data values on player that was not added to watch '" + UUID + "'");
-		return;
+		if (ip == null) // Log.ConsoleLog("Tried to set data values on player that was not added to watch '"
+						// + UUID + "'");
+			return;
 		Integer itemStore = ip.ItemDropped.get(itemID);
 		if (itemStore == null) {
 			itemStore = new Integer(0);
@@ -251,13 +304,12 @@ public class PlayerData implements IProcessable {
 		ip.ItemDropped.put(itemID, itemStore);
 	}
 
-	public void addPlayerTimer(Long time, String UUID){
-		_InternalPlayer ip= this._watchedPlayers.get(UUID);
-		if (ip== null)
+	public void addPlayerTimer(Long time, String UUID) {
+		_InternalPlayer ip = this._watchedPlayers.get(UUID);
+		if (ip == null)
 			return;
 		ip.addStartTime(time);
 	}
-
 
 	@Override
 	public synchronized void _processData() {
@@ -330,12 +382,8 @@ public class PlayerData implements IProcessable {
 			ArrayList<Long> timesteps;
             synchronized(intP.timeSteps){
             	timesteps = new ArrayList<Long> (intP.timeSteps.size());
-            	for(long timeStep: intP.timeSteps){
-            		if(timeStep<lastTimeStep){
-            			continue;
-            		}
-            		timesteps.addAll(intP.timeSteps);
-            	}
+        		timesteps.addAll(intP.timeSteps);
+
             }
             
 			for (Long timeStep: timesteps){
@@ -345,9 +393,7 @@ public class PlayerData implements IProcessable {
 				if(x!=null && y!=null && z!=null){
 					DBSynchDataGetSet.updateLocation(intP.UUID, timeStep, x, y,z);
 				}
-				lastTimeStep = timeStep;
 			}
-
 
 			// End of Database Calls
 
@@ -367,6 +413,6 @@ public class PlayerData implements IProcessable {
 		for (_InternalPlayer intP : playersToRemove) {
 			this._watchedPlayers.remove(intP.UUID);
 		}
+		
 	}
-
 }
