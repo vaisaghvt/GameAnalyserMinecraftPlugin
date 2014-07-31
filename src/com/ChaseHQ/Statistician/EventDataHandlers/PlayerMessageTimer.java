@@ -29,8 +29,8 @@ public class PlayerMessageTimer extends TimerTask {
 
 		StatisticianPlugin.getInstance().getPlayerData().addPlayerTimer((long) ((new Date()).getTime()%1e12), player.getUniqueId().toString());
 		if(Config.getConfig().getGameStartTime()!=0){
-			String message = "You have "+ Config.getConfig().getGameStartTime() +" minutes of preparation time to learn how to play.";
-			message += "w,a,s,d to move. Mouse to look. Double tap 'w' to run. Left ctrl to zoom in to view.  ";
+			String message = "Read the boards in front of you to start. You have "+ Config.getConfig().getGameStartTime() +" minute(s) of preparation time that won't be counted.";
+			message += "Please DISABLE THE MINIMAP. Generally period (.) key gives the option to do so.  ";
 			
 			
 			player.sendMessage(StringHandler.formatForChat(message, player));
@@ -43,26 +43,46 @@ public class PlayerMessageTimer extends TimerTask {
 		if (localTime < 60){
 			String message="";
 			int secondsLeft = (this.gameEndTime-this.localTime);
-			String timeLeft =  (secondsLeft /60)+ (secondsLeft%60 !=0 ?" : " +(secondsLeft %60):"");
+			String timeLeft =  String.valueOf(secondsLeft /60); //" : " +(secondsLeft %60):"");
 			
 			switch(localTime){
+//			OLD
+//			case 0:
+//				message= " The countdown has started!"+ " "+timeLeft +" minutes left. Pay attention to the messages here.";
+//				break;
+//			case 15:
+//				message= " Levers are NOT hidden. Look carefully though."+ " "+timeLeft +" minutes left";
+//				break;
+//			case 30:
+//				message= " Hint : the environment is complicated so you might want to leave doors open to know where you've visited"+ " "+timeLeft +" minutes left";
+//				break;
+//			case 45:
+//				message= " However, be warned, the freed prisoners can open or close doors. So this isn't always reliable."+ " "+timeLeft +" minutes left";
+//				break;
+//			default:
+//				message= " The countdown has started!";
+//				message+= " Hint : the environment is complicated so you might want to leave doors open to know where you've visited";
+//				message+= " However, be warned, the freed prisoners can open or close doors. So this isn't always reliable.";
+//				message+= " Levers are not hidden. However, they might not catch the eye at first. So look carefully.";
+//			New
 			case 0:
-				message= " The countdown has started!"+ " "+timeLeft +" minutes left. Pay attention to the messages here.";
+				message= " The countdown has started! "+timeLeft +" minutes left. Pay attention to the messages here.";
 				break;
 			case 15:
-				message= " Levers are NOT hidden. Look carefully though."+ " "+timeLeft +" minutes left";
+				message= " Please DISABLE THE MINIMAP. Generally period (.) key gives the option to do so. "+timeLeft +" minutes left.";
 				break;
 			case 30:
-				message= " Hint : the environment is complicated so you might want to leave doors open to know where you've visited"+ " "+timeLeft +" minutes left";
+				message= " Levers are NOT hidden. Look carefully though."+ " "+timeLeft +" minutes left";
 				break;
 			case 45:
-				message= " However, be warned, the freed prisoners can open or close doors. So this isn't always reliable."+ " "+timeLeft +" minutes left";
+				message= " Please DISABLE THE MINIMAP. Generally period (.) key gives the option to do so. "+timeLeft +" minutes left.";
 				break;
 			default:
 				message= " The countdown has started!";
 				message+= " Hint : the environment is complicated so you might want to leave doors open to know where you've visited";
 				message+= " However, be warned, the freed prisoners can open or close doors. So this isn't always reliable.";
 				message+= " Levers are not hidden. However, they might not catch the eye at first. So look carefully.";
+				
 			}
 			player.sendMessage(StringHandler.formatForChat(message, player));
 			localTime+=updateTime;
@@ -91,13 +111,13 @@ public class PlayerMessageTimer extends TimerTask {
 			}else if(prisonsLeft ==1){
 				if (countTimesForLast<5){
 					message = "You have 1 prison left to open. You have "+ timeLeft +
-						" minutes Left!";
+						" minutes Left! CHECK HERE for instructions on opening it.";
 				}
 				else{
 					if(lastPrisonLevel == null){
 						lastPrisonLevel = StatisticianPlugin.getInstance().getPlayerData().getLastPrisonLevel(player.getUniqueId().toString());
 					}
-					message = "Hint: The last one is in "+ lastPrisonLevel +". Hurry!!"+ timeLeft+ " minutes left!";
+					message = "Hint: The last one is in "+ lastPrisonLevel +". Hurry!!"+ timeLeft+ " minutes left! (CHECK HERE for instructions on opening it.)";
 				}
 				countTimesForLast++;
 			}else {

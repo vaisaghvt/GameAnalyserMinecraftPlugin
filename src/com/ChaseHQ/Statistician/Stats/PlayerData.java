@@ -59,11 +59,13 @@ public class PlayerData implements IProcessable {
 //			System.out.println("Trying to kill the server");
 		//Since only one player is connected at any given point of time, as soon as that one player disconnects stop the server.	
 		Server server = Bukkit.getServer();
+		try{
+			server.dispatchCommand(server.getConsoleSender(), "kick "+ip.getDisplayName()+" \"Thank you for playing!\"");
 		
-		server.dispatchCommand(server.getConsoleSender(), "kick "+ip.getDisplayName()+" \"Thank you for playing!\"");
-		
-		server.dispatchCommand(server.getConsoleSender(), "stop");
-//		}
+			server.dispatchCommand(server.getConsoleSender(), "stop");
+		}catch(NullPointerException e){
+			System.out.println("Could not end nicely");
+		}
 	}
 
 	public synchronized void addBlockBreak(String UUID, Integer blockID) {
@@ -137,7 +139,7 @@ public class PlayerData implements IProcessable {
 
 		Location leverLocation = clickedBlock.getLocation();
 
-		if ((clickedBlock.getData() & 0x8) == 8) { // powered
+		if ((clickedBlock.getData() & 0x8) != 8) { // powered
 
 			ip.addOpenPrisonLocation(leverLocation,
 					(long) ((new Date()).getTime() % 1e12));
@@ -146,28 +148,28 @@ public class PlayerData implements IProcessable {
 					.getNumberOfPrisons()) { // escape step 1 : go to top floor
 				player.sendMessage(StringHandler
 						.formatForChat(
-								"Good work so far! You need to escape asap now. Go to the gallery with all the pictures on Level 3. The Wall behind the desk holds the key.",
+								"Good work so far! You need to escape asap now. Go to the gallery with all the pictures on Level 3. Find the switch on the wall behind the desk.",
 								player));
-				PlayerMessageTimer.currentAim = "Picture Gallery (3rd floor)";
+				PlayerMessageTimer.currentAim = "Picture Gallery (3rd floor)[behind the desk]";
 			} else if (ip.getnumberOfPrisonsOpened() == Config.getConfig()
 					.getNumberOfPrisons() + 1) { // escape step 2 : knowledge
 													// testing path planning
 				player.sendMessage(StringHandler.formatForChat(
-						"Nice! One more step to freedom. Second floor-"
+						"Nice! Two more steps to freedom. Second floor-"
 								+ SECOND_TASK_LOCATION
-								+ ". Another secret wall.", player));
+								+ ". A similar secret wall.", player));
 				ip.setEscapeStartTime((long) ((new Date()).getTime() % 1e12));
 				PlayerMessageTimer.currentAim = SECOND_TASK_LOCATION
-						+ " (2nd floor)";
+						+ " (2nd floor) [wall between 4 torches & 2 shelves]";
 			} else if (ip.getnumberOfPrisonsOpened() == Config.getConfig()
 					.getNumberOfPrisons() + 2) { // escape step 3 : get to
 													// escape. Again knowledge
 													// testing and finale.
 				player.sendMessage(StringHandler
 						.formatForChat(
-								"Awesome work soldier! Proceeed to your starting location on the ground floor.",
+								"Awesome work soldier! Proceeed to your starting location on the ground floor to complete the game.",
 								player));
-				PlayerMessageTimer.currentAim = "Starting Location (1st Floor)";
+				PlayerMessageTimer.currentAim = "Starting Location (1st Floor) [your first instruction spot]";
 			} else if (ip.getnumberOfPrisonsOpened() < Config.getConfig()
 					.getNumberOfPrisons()) {
 				if (ip.getnumberOfPrisonsOpened() > 0) {
@@ -180,9 +182,9 @@ public class PlayerData implements IProcessable {
 				long timeAtComplete = (long) ((new Date()).getTime() % 1e12);
 				long timeToComplete = ip.setCompletionTime(timeAtComplete);
 				player.sendMessage(StringHandler.formatForChat(
-						"Congratulations! You completed the task in "
+						"Congratulations! The palace doors have been opened to your right and you can escape. You completed the task in "
 								+ timeToComplete
-								+ " seconds. Thank you for playing!", player));
+								+ " seconds. ", player));
 				ip.setGameCompleted();
 			}
 		} else {

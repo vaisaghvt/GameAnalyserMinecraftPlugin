@@ -20,7 +20,6 @@ import com.ChaseHQ.Statistician.Utils.Position;
 
 
 public class _InternalPlayer {
-	
 
 	public static HashSet<Position> positions;
 	public String UUID = new String();
@@ -171,7 +170,7 @@ public class _InternalPlayer {
 		}
 
 
-		File file = new File("C:\\Users\\vaisagh\\Desktop\\scripts\\times.txt");
+		File file = new File("/home/ec2-user/settings/scripts/times.txt");
 	     PrintWriter writer = null;
 	     try {
 	            writer = new PrintWriter(new BufferedWriter(new FileWriter(file)));
